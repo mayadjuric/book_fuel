@@ -10,6 +10,7 @@ lerna-debug.log*
 app/frontend/node_modules
 app/frontend/dist
 app/frontend/dist-ssr
+app/frontend/.vite
 *.local
 
 # Editor directories and files
@@ -31,3 +32,6 @@ __pycache__/
 # Environment variables
 .env
 .venv
+
+# Google Cloud credentials/ Supabase
+client_secret*.json
