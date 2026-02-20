@@ -8,16 +8,16 @@ class User:
 
 
 
-    def get_username():
+    def get_username(self):
         return self.username
     
-    def get_study_year():
+    def get_study_year(self):
         return self.study_year
     
-    def get_total_burnout():
+    def get_total_burnout(self):
         return self.total_burnout
     
-    
+
 
 
 
