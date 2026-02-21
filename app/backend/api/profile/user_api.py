@@ -11,9 +11,6 @@ supabase: Client = create_client(
 )
 
 
-
-
-
 @user_blueprint.route("/api/profile/<user_id>", methods = ["GET", "POST"])
 def profile(user_id):
     if request.method == "GET": # Return the user profile
@@ -25,11 +22,16 @@ def profile(user_id):
         username = req.get("username")
         study_year = req.get("study_year")
         total_burnout = req.get("total_burnout")
-        response = supabase.table("User").insert({
-            "username": username, "yearOfStudy": study_year, "total_burnout": total_burnout
-            }).execute()
+        response = (
+            supabase.table("User")
+            .insert(
+                {
+                    "username": username,
+                    "yearOfStudy": study_year,
+                    "total_burnout": total_burnout,
+                }
+            )
+            .execute()
+        )
 
         return jsonify({"status": "200", "message": f"added user {username}"})
-    
-    
-    

@@ -1,13 +1,11 @@
+from dataclass import dataclass
 
+@dataclass
 class User:
-    user_id_counter = 1
-    def __init__(self, username, study_year, total_burnout):
-        self.u_id = User.user_id_counter
-        User.user_id_counter += 1
-        self.username = username
-        self.study_year = study_year
-        self.total_burnout = total_burnout
-
+    user_id: int
+    username: str
+    study_year: str
+    total_burnout: int | None
 
     def get_user_id(self):
         return self.u_id

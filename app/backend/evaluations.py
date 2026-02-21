@@ -1,12 +1,14 @@
+from dataclass import dataclass
+
+@dataclass
 class Evaluations:
-    def __init__(self, u_id, a_id, start_date, due_date, name, type, burnout_weight):
-        self.u_id = u_id
-        self.a_id = a_id
-        self.start_date = start_date
-        self.due_date = due_date
-        self.name = name
-        self.type = type
-        self.burnout_weight = burnout_weight
+    user_id: int
+    assignment_id: int
+    start_date: str
+    due_date: str
+    name: str
+    type_: str
+    burnout_weight: float
 
     def get_assigment_name(self):
         return self.name
@@ -16,3 +18,14 @@ class Evaluations:
     
     def get_burnout_weight(self):
         return self.burnout_weight
+
+    def serialize(self):
+        return {
+            "user_id": self.user_id,
+            "assignment_id": self.assignment_id,
+            "start_date": self.start_date,
+            "due_date": self.due_date,
+            "name": self.name,
+            "type_": self.type_,
+            "burnout_weight": self.burnout_weight
+        }
