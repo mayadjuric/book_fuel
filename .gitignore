@@ -11,6 +11,7 @@ app/frontend/node_modules
 app/frontend/dist
 app/frontend/dist-ssr
 app/frontend/.vite
+app/frontend/package-lock.json
 *.local
 
 # Editor directories and files

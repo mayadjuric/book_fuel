@@ -1,33 +1,54 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useEffect, useState } from 'react'
 import './App.css'
+import { createClient, type Session } from '@supabase/supabase-js'
+import { Navbar } from './components/Navbar'
 
-function App() {
-  const [count, setCount] = useState(0)
+const supabaseUrl = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
+
+function Login({ session }: { session: Session | null }) {
+  // usf
+  const handleLogin = async () => {
+    const { error } = await supabaseUrl.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+    if (error) {
+      console.error('Error during login:', error.message)
+    }
+  }
 
   return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <button onClick={handleLogin}>Login with Google</button>
+    </div>
+  )
+   
+}
+
+function App() {
+  const [session, setSession] = useState<Session | null>(null)
+  // const [count, setCount] = useState(0)
+
+
+  useEffect(() => {
+    const { data: authListener } = supabaseUrl.auth.onAuthStateChange((event, session) => {
+      setSession(session)
+    })
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
+  }, []);
+  
+  return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <Navbar />
+      {session ? <div>Logged in as {session.user.email}</div> : <Login session={session} />}
     </>
   )
 }
