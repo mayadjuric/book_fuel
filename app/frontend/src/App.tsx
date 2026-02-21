@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { createClient, type Session } from '@supabase/supabase-js'
-import { Navbar } from './components/Navbar'
+import { Dashboard } from './pages/Dashboard'
 
-const supabaseUrl = createClient(
+const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 )
 
-function Login({ session }: { session: Session | null }) {
-  // usf
+function Login() {
   const handleLogin = async () => {
-    const { error } = await supabaseUrl.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
@@ -23,33 +22,36 @@ function Login({ session }: { session: Session | null }) {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <button onClick={handleLogin}>Login with Google</button>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '1rem' }}>
+      <h1>BookFuel</h1>
+      <button onClick={handleLogin} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>Login with Google</button>
     </div>
   )
-   
 }
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
-  // const [count, setCount] = useState(0)
-
 
   useEffect(() => {
-    const { data: authListener } = supabaseUrl.auth.onAuthStateChange((event, session) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setSession(session)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
 
-    return () => {
-      authListener.subscription.unsubscribe()
-    }
-  }, []);
-  
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (!session) {
+    return <Login />
+  }
+
   return (
-    <>
-      <Navbar />
-      {session ? <div>Logged in as {session.user.email}</div> : <Login session={session} />}
-    </>
+    <Dashboard />
   )
 }
 
