@@ -1,9 +1,7 @@
 from datetime import datetime
-from flask import Blueprint, request, make_response, jsonify
 import os
-
+from flask import Blueprint, request, make_response, jsonify
 from supabase import create_client, Client
-
 
 evaluation_blueprint = Blueprint("evaluation_blueprint", __name__)
 
