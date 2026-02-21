@@ -1,14 +1,12 @@
 from datetime import datetime
 import os
 from flask import Blueprint, request, make_response, jsonify
-from supabase import create_client, Client
+from config import supabase
+from controllers.evaluation_controller import calculate_evaluation_burnout
 
 evaluation_blueprint = Blueprint("evaluation_blueprint", __name__)
 
-supabase: Client = create_client(
-    os.environ.get("SUPABASE_URL"),
-    os.environ.get("SUPABASE_KEY")
-)
+
 
 
 @evaluation_blueprint.route("/api/evaluations/<a_id>", methods = ["POST"])
@@ -20,8 +18,8 @@ def add_evaluation(a_id):
     due_date = req.get("due_date")
     name = req.get("name")
     type_ = req.get("type")
+    difficulty = req.get("difficulty")
 
-    burnout_weight = None
     response = (
         supabase.table("Evaluations")
         .insert(
@@ -31,8 +29,8 @@ def add_evaluation(a_id):
                 "start_date": start_date,
                 "due_date": due_date,
                 "name": name,
-                "type_": type_,
-                "burnout_weight": 0,
+                "type": type_,
+                "difficulty": difficulty
             }
         )
         .execute()
@@ -40,3 +38,11 @@ def add_evaluation(a_id):
 
     print(f"The response is : {response}")
     return jsonify({"status": "200", "message": f"added evaluation {assignment_id}"})
+
+@evaluation_blueprint.route("/api/evaluations/<a_id>/calculate_burnout", methods = ["POST"])
+def calculate_burnout(a_id):
+    burnout_weight = calculate_evaluation_burnout(a_id)
+    if burnout_weight is None:
+        return jsonify({"status": "404", "message": "Evaluation not found"}), 404
+    supabase.table("Evaluations").update({"burnout_weight": burnout_weight}).eq("assignment_id", a_id).execute()
+    return jsonify({"status": "200", "burnout_weight": burnout_weight})

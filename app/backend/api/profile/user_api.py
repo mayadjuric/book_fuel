@@ -1,37 +1,47 @@
-from flask import Blueprint, request, make_response, jsonify
-import os
+from flask import Blueprint, request, jsonify
+from config import supabase
+from controllers.user_controller import calculate_burnout_points
 
-from supabase import create_client, Client
-
-user_blueprint = Blueprint("user_blueprint", __name__)\
-
-supabase: Client = create_client(
-    os.environ.get("SUPABASE_URL"),
-    os.environ.get("SUPABASE_KEY")
-)
+user_blueprint = Blueprint("user_blueprint", __name__)
 
 
-@user_blueprint.route("/api/profile/<user_id>", methods = ["GET", "POST"])
-def profile(user_id):
-    if request.method == "GET": # Return the user profile
-        response = supabase.table("User").select("*").eq("id", user_id).execute()
-        return jsonify({"status": "200", "data": response.data})
+@user_blueprint.route("/api/profile/<user_id>", methods = ["GET"])
+def get_profile(user_id):
+    response = supabase.table("User").select("*").eq("id", user_id).execute()
+    return jsonify({"status": "200", "data": response.data})
 
-    if request.method == "POST": # Create a new user profile
-        req = request.get_json()
-        username = req.get("username")
-        study_year = req.get("study_year")
-        total_burnout = req.get("total_burnout")
-        response = (
-            supabase.table("User")
-            .insert(
-                {
-                    "username": username,
-                    "yearOfStudy": study_year,
-                    "total_burnout": total_burnout,
-                }
-            )
-            .execute()
+# Create user profile
+@user_blueprint.route("/api/profile", methods = ["POST"])
+def add_new_user():
+    req = request.get_json()
+    username = req.get("username")
+    study_year = req.get("study_year")
+    number_of_courses = req.get("number_of_courses")
+    work_hours_per_week = req.get("work_hours_per_week")
+    commute_time_per_day = req.get("commute_time_per_day")
+    student_athlete_flag = req.get("student_athlete_flag")
+    response = (
+        supabase.table("User")
+        .insert(
+            {
+                "username": username,
+                "year_of_study": study_year,
+                "number_of_courses": number_of_courses,
+                "work_hours_per_week": work_hours_per_week,
+                "commute_time_per_day": commute_time_per_day,
+                "athlete_flag": student_athlete_flag,
+            }
         )
+        .execute()
+    )
+    return jsonify(response.data), 201
 
-        return jsonify({"status": "200", "message": f"added user {username}"})
+
+@user_blueprint.route("/api/profile/<user_id>/burnout", methods = ["POST"])
+def calculate_burnout(user_id):
+    burnout_points = calculate_burnout_points(user_id)
+    if burnout_points is None:
+        return jsonify({"status": "404", "message": "User not found"}), 404
+    burnout_points = int(burnout_points)
+    supabase.table("User").update({"total_burnout": burnout_points}).eq("id", user_id).execute()
+    return jsonify({"status": "200", "burnout_points": burnout_points})
