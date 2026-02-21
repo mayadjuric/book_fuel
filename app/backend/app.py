@@ -1,22 +1,27 @@
 from dotenv import load_dotenv
 load_dotenv()
 import flask
+from flask_cors import CORS
+from config import supabase
 import os
-from supabase import create_client, Client
+
 from api.profile.user_api import user_blueprint
 from api.evaluations.evaluations_api import evaluation_blueprint
 
 
 
 app = flask.Flask(__name__)
+CORS(
+	app,
+	supports_credentials=True,
+	origins=["http://localhost:5173"],
+	methods=["GET", "POST", "OPTIONS"],
+	allow_headers=["Content-Type", "Authorization"]
+	)
 app.register_blueprint(user_blueprint)
 
 app.register_blueprint(evaluation_blueprint)
 
-supabase: Client = create_client(
-    os.environ.get("SUPABASE_URL"),
-    os.environ.get("SUPABASE_KEY")
-)
 
 @app.route("/")
 def home():
@@ -24,4 +29,4 @@ def home():
 
 
 if __name__ == "__main__":
-	app.run(debug=True)
+	app.run(host="0.0.0.0", port=5100, debug=True)
