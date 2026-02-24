@@ -22,6 +22,11 @@ export function Dashboard({ tasks, setTasks }: DashboardProps) {
     setTasks([...tasks, newTask]);
   };
 
+  const handleClick = async () => {
+    // alert("[HANDLE CLICK] This will be a quick suggestion popup in the future!");
+    alert("Google Calendar integration coming soon! In the meantime, you can view your upcoming events in the 'Upcoming Events' section below.");
+  }
+
   useEffect(() => {
     const fetchSession = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -63,6 +68,10 @@ export function Dashboard({ tasks, setTasks }: DashboardProps) {
           <TaskInput onAddTask={handleAddTask} />
         </div>
         <div className="col-span-4 rounded-xl border bg-card text-card-foreground shadow p-4">
+          <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors" 
+            onClick={handleClick}>
+            Connect Google Calendar
+          </button>
           <TaskList tasks={tasks} />
         </div>
       </div>
