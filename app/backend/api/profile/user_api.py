@@ -6,9 +6,25 @@ from controllers.user_controller import calculate_burnout_points
 
 user_blueprint = Blueprint("user_blueprint", __name__)
 
+year_of_study_mapping = {
+    "Freshman": 1,
+    "Sophomore": 2,
+    "Junior": 3,
+    "Senior": 4,
+    "Graduate": 5,
+}
+
 @user_blueprint.before_request
 def setup_supabase_client():
     try:
+        if request.method == "OPTIONS": # Handle preflight CORS requests
+            print(f"Received OPTIONS request with headers: {request.headers}")
+            response = make_response(jsonify({"status": "200", "message": "OK"}), 200)
+            response.headers.add("Access-Control-Allow-Origin", "http://localhost:5173")
+            response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            return response
+
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_KEY")
         if not supabase_url or not supabase_key:
@@ -32,7 +48,7 @@ def setup_supabase_client():
 
 @user_blueprint.route("/api/profile/<user_id>", methods = ["GET"])
 def get_profile(user_id):
-    response = supabase.table("User").select("*").eq("id", user_id).execute()
+    response = g.supabase_client.table("User").select("*").eq("id", user_id).execute()
     return jsonify({"status": "200", "data": response.data})
 
 
@@ -60,7 +76,7 @@ def add_new_user():
         .insert(
             {
                 "username": username,
-                "year_of_study": study_year,
+                "year_of_study": year_of_study_mapping[study_year],
                 "number_of_courses": number_of_courses,
                 "work_hours_per_week": work_hours_per_week,
                 "commute_time_per_day": commute_time_per_day,

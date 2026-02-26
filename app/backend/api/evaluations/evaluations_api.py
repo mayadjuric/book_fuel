@@ -12,11 +12,19 @@ evaluation_blueprint = Blueprint("evaluation_blueprint", __name__)
 @evaluation_blueprint.before_request
 def setup_supabase_client():
     try:
+        if request.method == "OPTIONS": # Handle preflight CORS requests
+            print(f"Received OPTIONS request with headers: {request.headers}")
+            response = make_response(jsonify({"status": "200", "message": "OK"}), 200)
+            response.headers.add("Access-Control-Allow-Origin", "http://localhost:5173")
+            response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            return response 
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_KEY")
         if not supabase_url or not supabase_key:
             raise ValueError("Supabase URL or Key not set in environment variables")
         auth_header = request.headers.get("Authorization")
+
         token = (
             auth_header.split(" ")[1] if auth_header and " " in auth_header else None
         )
@@ -51,7 +59,7 @@ def setup_supabase_client():
             500,
         )
 
-@evaluation_blueprint.route("/api/evaluations/<a_id>", methods = ["POST"])
+@evaluation_blueprint.route("/api/evaluations/<a_id>", methods = ["POST", "OPTIONS"])
 def add_evaluation(a_id: int):
     req = request.get_json()
     
