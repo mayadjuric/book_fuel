@@ -3,7 +3,6 @@ import datetime
 import secrets
 from flask import Blueprint, json, jsonify, make_response, redirect, request, g
 from itsdangerous import BadSignature, BadTimeSignature, URLSafeTimedSerializer
-import requests
 
 from supabase import ClientOptions, create_client
 
@@ -12,6 +11,8 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+
+from config import _get_supabase_service_client, _get_supabase_user_id_from_jwt
 
 
 SCOPES = [
@@ -46,39 +47,6 @@ def _get_state_serializer() -> URLSafeTimedSerializer:
 		)
 	return URLSafeTimedSerializer(secret_key=secret, salt="bookfuel-google-oauth")
 
-
-def _get_supabase_user_id_from_jwt(token: str) -> str:
-	"""Resolve Supabase user id from a Supabase access token."""
-	supabase_url = os.getenv("SUPABASE_URL")
-	supabase_anon_key = os.getenv("SUPABASE_KEY")
-	if not supabase_url or not supabase_anon_key:
-		raise RuntimeError("SUPABASE_URL / SUPABASE_KEY not set")
-
-	resp = requests.get(
-		f"{supabase_url}/auth/v1/user",
-		headers={
-			"Authorization": f"Bearer {token}",
-			"apikey": supabase_anon_key,
-		},
-		timeout=10,
-	)
-	resp.raise_for_status()
-	data = resp.json()
-	user_id = data.get("id")
-	if not user_id:
-		raise RuntimeError("Supabase /auth/v1/user response missing id")
-	return user_id
-
-
-def _get_supabase_service_client():
-	"""Service-role client for server-side token storage."""
-	supabase_url = os.getenv("SUPABASE_URL")
-	service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-	if not supabase_url or not service_key:
-		raise RuntimeError(
-			"Missing SUPABASE_SERVICE_ROLE_KEY. Needed to store Google tokens from the OAuth callback."
-		)
-	return create_client(supabase_url, service_key)
 
 
 @calendar_blueprint.before_request

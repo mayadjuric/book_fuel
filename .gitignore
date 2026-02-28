@@ -36,3 +36,4 @@ __pycache__/
 
 # Google Cloud credentials/ Supabase
 client_secret*.json
+credentials.json
