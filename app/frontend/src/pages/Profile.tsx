@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import supabase from '../supabaseClient';
 
-const SERVER_IP = import.meta.env.SERVER_IP || 'localhost';
-const API_URL = `http://${SERVER_IP}:5100/api/`;
+const SERVER_IP = import.meta.env.VITE_SERVER_IP || 'localhost';
+const API_URL = `http://localhost:5100/api/`;
 
 interface UserProfile {
   username: string;
@@ -37,7 +37,13 @@ export function Profile() {
       if (session) {
         try {
           // Fetch from the backend GET endpoint
-          const res = await fetch(`${API_URL}profile/${session.user.id}`);
+          const res = await fetch(`${API_URL}profile/${session.user.id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+          });
           const responseData = await res.json();
 
           if (responseData.data && responseData.data.length > 0) {

@@ -1,13 +1,18 @@
-from datetime import datetime
 import os
 import json
+from datetime import datetime
+from postgrest import APIError
 from supabase import ClientOptions, create_client
+from postgrest.base_request_builder import APIResponse
 from flask import Blueprint, request, make_response, jsonify, g
-from config import supabase
+
+from config import _get_supabase_user_id_from_jwt, supabase
 from controllers.evaluation_controller import calculate_evaluation_burnout
+from services.evaluation_services import suggest_types_for_names
 
 evaluation_blueprint = Blueprint("evaluation_blueprint", __name__)
 
+UNIQUE_CONSTRAINT_ERROR = "23505"
 
 @evaluation_blueprint.before_request
 def setup_supabase_client():
@@ -45,7 +50,9 @@ def setup_supabase_client():
             options=ClientOptions(headers={"Authorization": f"Bearer {token}"}),
         )
         user_client.postgrest.auth(token)
+
         g.supabase_client = user_client
+        g.supabase_token = token
         print(f"Received request with the following headers: {request.headers}")
     except Exception as e:
         print(f"Error setting up Supabase client: {e}")
@@ -59,35 +66,70 @@ def setup_supabase_client():
             500,
         )
 
-@evaluation_blueprint.route("/api/evaluations/<a_id>", methods = ["POST", "OPTIONS"])
-def add_evaluation(a_id: int):
+@evaluation_blueprint.route("/api/evaluations/suggest-types", methods=["POST", "OPTIONS"])
+def suggest_types():
+    req = request.get_json() or {}
+    names = req.get("names", [])
+    if not isinstance(names, list):
+        names = []
+    suggestions = suggest_types_for_names(names)
+    return jsonify({"status": "200", "suggestions": suggestions}), 200
+
+
+@evaluation_blueprint.route("/api/evaluations/", methods = ["POST", "OPTIONS"])
+def add_evaluation():
     req = request.get_json()
     
-    assignment_id = req.get("assignment_id")
     start_date = req.get("start_date")
     due_date = req.get("due_date")
     name = req.get("name")
     type_ = req.get("type")
     difficulty = req.get("burnout_weight")
-
-    response = (
-        g.supabase_client.table("Evaluations")
-        .insert(
-            {
-                # "user_id": user_id,
-                "assignment_id": assignment_id,
-                "start_date": start_date,
-                "due_date": due_date,
-                "name": name,
-                "type": type_,
-                "difficulty": difficulty
-            }
+    
+    try:
+        response: APIResponse = (
+            g.supabase_client.table("Evaluations")
+            .insert(
+                {
+                    "start_date": start_date,
+                    "due_date": due_date,
+                    "name": name,
+                    "type": type_,
+                    "difficulty": difficulty
+                }
+            )
+            .execute()
         )
-        .execute()
-    )
+        print(f"The response is : {response}")
+        return jsonify({"status": "200", "message": f"added evaluation {name}"})
+    except APIError as apie:
+        if apie.code == UNIQUE_CONSTRAINT_ERROR:
+            print(f'ERROR: Unique constraint violation for the given evaluation. Details: {apie.details}')
+            return jsonify({"status": "409", "message": "Conflict: You may have already added an evaluation for this evaluation"}), 409
+        print(f"API error occurred: {apie.code} - {apie.message}")
+        return jsonify({"status": "400", "message": f"Bad Request: {str(apie)}"}), 400
+    except Exception as e:
+        print(f"Unexpected error occurred: {e}")
+        return jsonify({"status": "500", "message": f"Internal Server Error: {str(e)}"}), 500
 
-    print(f"The response is : {response}")
-    return jsonify({"status": "200", "message": f"added evaluation {assignment_id}"})
+
+@evaluation_blueprint.route("/api/evaluations/", methods = ["GET"])
+def get_evaluations():
+    # req = request.get_json()
+    print(f"Received request to get evaluations")
+    user_id = _get_supabase_user_id_from_jwt(g.supabase_token)
+    try:
+        response = (
+            g.supabase_client.table("Evaluations")
+            .select("*")
+            .eq("user_id", user_id)
+            .execute()
+        )
+    except Exception as e:
+        print(f"Error fetching evaluations for user_id {user_id}: {e}")
+        return jsonify({"status": "500", "message": f"Internal Server Error: {str(e)}"}), 500
+    return jsonify({"status": "200", "data": response.data}), 200
+
 
 @evaluation_blueprint.route("/api/evaluations/<a_id>/calculate_burnout", methods = ["POST"])
 def calculate_burnout(a_id):

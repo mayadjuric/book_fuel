@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, request, jsonify, g, json
+from flask import Blueprint, make_response, request, jsonify, g, json
 from supabase import Client, ClientOptions, create_client
 from config import supabase
 from controllers.user_controller import calculate_burnout_points

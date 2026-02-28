@@ -48,7 +48,6 @@ def _get_state_serializer() -> URLSafeTimedSerializer:
 	return URLSafeTimedSerializer(secret_key=secret, salt="bookfuel-google-oauth")
 
 
-
 @calendar_blueprint.before_request
 def setup_supabase_client():
 	try:
@@ -129,31 +128,31 @@ def calendar_auth():
 
 @calendar_blueprint.route("/api/calendar/callback", methods = ["GET"])
 def calendar_callback():
-	code = request.args.get("code")
-	state = request.args.get("state")
-	if not code or not state:
-		return jsonify({"status": "400", "message": "Missing code or state"}), 400
+    code = request.args.get("code")
+    state = request.args.get("state")
+    if not code or not state:
+        return jsonify({"status": "400", "message": "Missing code or state"}), 400
 
-	serializer = _get_state_serializer()
-	try:
-		payload = serializer.loads(state, max_age=10 * 60)
-	except (BadTimeSignature, BadSignature):
-		return jsonify({"status": "400", "message": "Invalid or expired state"}), 400
+    serializer = _get_state_serializer()
+    try:
+        payload = serializer.loads(state, max_age=10 * 60)
+    except (BadTimeSignature, BadSignature):
+        return jsonify({"status": "400", "message": "Invalid or expired state"}), 400
 
-	user_id = payload.get("uid")
-	if not user_id:
-		return jsonify({"status": "400", "message": "State missing uid"}), 400
+    user_id = payload.get("uid")
+    if not user_id:
+        return jsonify({"status": "400", "message": "State missing uid"}), 400
 
-	flow = Flow.from_client_secrets_file(
+    flow = Flow.from_client_secrets_file(
 		_get_google_client_secrets_file(),
 		scopes=SCOPES,
 		redirect_uri=f"{_get_backend_origin()}/api/calendar/callback",
 	)
-	flow.fetch_token(code=code)
-	creds = flow.credentials
+    flow.fetch_token(code=code)
+    creds = flow.credentials
 
-	service_client = _get_supabase_service_client()
-	service_client.table("google_calendar_connections").upsert(
+    service_client = _get_supabase_service_client()
+    service_client.table("google_calendar_connections").upsert(
 		{
 			"user_id": user_id,
 			"provider": "google",
@@ -169,14 +168,15 @@ def calendar_callback():
 		on_conflict="user_id",
 	).execute()
 
-	return redirect(_get_frontend_origin())
+    # Redirect user to the frontend OAuth success page so the popup can notify the opener
+    return redirect(f"{_get_frontend_origin()}/oauth-success")
 
 
 @calendar_blueprint.route("/api/calendar/events")
 def get_calendar_events():
-	user_id = _get_supabase_user_id_from_jwt(g.supabase_token)
-	suid = _get_supabase_service_client()
-	conn = (
+    user_id = _get_supabase_user_id_from_jwt(g.supabase_token)
+    suid = _get_supabase_service_client()
+    conn = (
 		suid.table("google_calendar_connections")
 		.select("refresh_token")
 		.eq("user_id", user_id)
@@ -185,16 +185,16 @@ def get_calendar_events():
 		.execute()
 	)
 
-	if not conn:
-		return jsonify({"status": "400", "message": "No refresh token found for user"}), 400
-	
-	if not conn.data:
-		return jsonify({"status": "400", "message": "No refresh token found for user"}), 400
+    if not conn:
+        return jsonify({"status": "400", "message": "No refresh token found for user"}), 400
 
-	client_id = os.getenv("GCP_CLIENT_ID")
-	client_secret = os.getenv("GCP_CLIENT_SECRET")
+    if not conn.data:
+        return jsonify({"status": "400", "message": "No refresh token found for user"}), 400
 
-	creds = Credentials(
+    client_id = os.getenv("GCP_CLIENT_ID")
+    client_secret = os.getenv("GCP_CLIENT_SECRET")
+
+    creds = Credentials(
 		token=None,
 		refresh_token=conn.data.get("refresh_token"),
 		client_id=client_id,
@@ -203,13 +203,13 @@ def get_calendar_events():
 		scopes=SCOPES,
 	)
 
-	creds.refresh(Request())
+    creds.refresh(Request())
 
-	service = build("calendar", "v3", credentials=creds)
+    service = build("calendar", "v3", credentials=creds)
 
-	now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
-	print('Getting the upcoming 10 events')
-	events_result = (
+    now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
+    print('Getting the upcoming 10 events')
+    events_result = (
 		service.events()
 		.list(
 			calendarId="primary",
@@ -220,17 +220,36 @@ def get_calendar_events():
 		)
 		.execute()
 	)
-	events = events_result.get("items", [])
+    events = events_result.get("items", [])
 
-	if not events:
-		print("No upcoming events found.")
-		return jsonify({"status": "200", "events": []}), 200
-	
-	for ev in events:
-		print(f"Event: {ev.get('summary')} at {ev.get('start', {}).get('dateTime', ev.get('start', {}).get('date'))}")
+    if not events:
+        print("No upcoming events found.")
+        return jsonify({"status": "200", "events": []}), 200
 
-	return make_response(jsonify({
+    for ev in events:
+        print(f"Event: {ev.get('summary')} at {ev.get('start', {}).get('dateTime', ev.get('start', {}).get('date'))}")
+
+    return make_response(jsonify({
 		"status": "200",
 		"connected": True,
 		"events": events,
 	}))
+
+
+@calendar_blueprint.route("/api/calendar/status")
+def calendar_status():
+    user_id = _get_supabase_user_id_from_jwt(g.supabase_token)
+    suid = _get_supabase_service_client()
+    conn = (
+        suid.table("google_calendar_connections")
+        .select("refresh_token")
+        .eq("user_id", user_id)
+        .limit(1)
+        .single()
+        .execute()
+    )
+
+    if not conn or not conn.data:
+        return jsonify({"status": "200", "connected": False}), 200
+
+    return jsonify({"status": "200", "connected": True}), 200
