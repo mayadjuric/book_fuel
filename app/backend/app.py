@@ -7,8 +7,7 @@ import os
 
 from api.profile.user_api import user_blueprint
 from api.evaluations.evaluations_api import evaluation_blueprint
-
-
+from api.calendar.calendar_api import calendar_blueprint
 
 app = flask.Flask(__name__)
 CORS(
@@ -21,7 +20,7 @@ CORS(
 app.register_blueprint(user_blueprint)
 
 app.register_blueprint(evaluation_blueprint)
-
+app.register_blueprint(calendar_blueprint)
 
 @app.route("/")
 def home():

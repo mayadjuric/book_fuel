@@ -1,20 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import supabase from '../supabaseClient';
+import type { ITask } from './Task';
 
-const SLINKY_MAN_ID = 24
 const API_URL = 'http://localhost:5100/api/'
 
-interface evalDetails {
-  user_id: number,
-  assignment_id: number,
-  start_date: string,
-  due_date: string,
-  name: string,
-  type: string,
-  difficulty?: number
-}
 
-export function TaskInput({ onAddTask }: { onAddTask: (task: evalDetails) => void }) {
+export function TaskInput({ onAddTask }: { onAddTask: (task: ITask) => void }) {
   const [taskName, setTaskName] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState('');
@@ -35,25 +26,20 @@ export function TaskInput({ onAddTask }: { onAddTask: (task: evalDetails) => voi
       return;
     }
 
-    const user = session.user;
     const userToken = session.access_token;
 
-    // In a real app we would get this from the user's profile table
-    const userId = SLINKY_MAN_ID;
 
     try {
       const payload = {
-        user_id: userId,
-        assignment_id: getRandomArbitrary(1, 10000),
         start_date: new Date(startDate).toISOString(),
         due_date: new Date(dueDate).toISOString(),
         name: taskName,
         type: type,
-        burnout_weight: burnoutWeight
+        difficulty: burnoutWeight
       };
 
       console.log('Sending evaluation details to API:', payload);
-      const response = await fetch(`${API_URL}evaluations/${payload.assignment_id}`, {
+      const response = await fetch(`${API_URL}evaluations/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
